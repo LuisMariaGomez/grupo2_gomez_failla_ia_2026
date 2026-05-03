@@ -1,0 +1,3 @@
+# No hay dependencias externas detectadas por ahora.
+# Cuando agregues imports de librerias de terceros, listalos aqui, por ejemplo:
+# requests==2.32.3
