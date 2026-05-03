@@ -10,13 +10,13 @@ restricciones:
     -solo puede llevar 2 muestras a la vez, debe dejar la capsula para juntar mas
     -hay dos tipos de rocas, para cada una hay un taladro, el rover no peude tener equipados ambos a la vez, debe equipar uno para juntar una muestra y luego cambiarlo por el otro para juntar la otra muestra
     -la bateria no debe llegar a 0
-acciones:
-    - se puede mover en las 4 direcciones cardinales, cada movimiento consume 1 unidad de bateria y 1 min
-    - puede "sprintar" saltando una casilla y moviendose 2 en un minuto, pero 4 unidades de bateria
-    - puede equipar un taladro, lo que consume 3 minuto y 1 unidad de bateria
-    - juntar una muestra consume 2 minutos y 3 unidad de bateria (debe estar arriba de la muestra, tener el taladro correcto equipado y lugar en la capsula)
-    - dejar la capsula con las muestras consume 1 minuto por muestra y 1 unidad de bateria (debe estar en la base)
-    - recargar la bateria consume 4 minutos y restaura la bateria en 10 (no debe estar en zona de sombra)
+acciones: (de mayor a menor asi dependiendo de la bateria armamos la lista de acciones posibles)
+    - Sprint (4 batería / 1 min) salta dos casillas en una direccion (revisar que no se salga del mapa)
+    - Juntar muestra (3 batería / 2 min) listo
+    - Dejar cápsula (1 batería por muestra / 1 min c/u)
+    - Equipar taladro (1 batería / 3 min)
+    - Movimiento normal (1 batería / 1 min)
+    - Recargar batería (+10 batería / 4 min)
 """
 from simpleai import SearchProblem, astar_search
 
@@ -29,12 +29,25 @@ class Rover():
         self.muestras_igneas = muestras_igneas
         self.muestras_sedimentarias = muestras_sedimentarias
         self.muestras = []
-        self.drill = None
+        self.taladro = None
 
     def actions(state):
         acciones_posibles = []
-        if state.bateria <= 4:
-            pass
+        if state.bateria > 4:
+            acciones_posibles.append("sprintar")
+        if state.bateria > 3:
+            acciones_posibles.append("equipar_taladro")  
+        if state.bateria > 2 and len(state.muestras) < 2 and state.posicion in state.muestras_igneas and state.taladro == "igneo":
+            acciones_posibles.append("juntar_muestra_igneo")
+        if state.bateria > 2 and len(state.muestras) < 2 and state.posicion in state.muestras_sedimentarias and state.taladro == "sedimentario":
+            acciones_posibles.append("juntar_muestra_sedimentario")
+        if state.bateria > len(state.muestras) and len(state.muestras) > 0:
+            acciones_posibles.append("dejar_capsula")
+        if state.bateria > 1:
+            acciones_posibles.append("movimiento_normal")
+        acciones_posibles.append("recargar_bateria")
+        return acciones_posibles
+    
     def cost(state1, action, state2):
 
         pass
