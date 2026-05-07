@@ -17,47 +17,70 @@ acciones: (de mayor a menor asi dependiendo de la bateria armamos la lista de ac
     - Equipar taladro (1 batería / 3 min)
     - Movimiento normal (1 batería / 1 min)
     - Recargar batería (+10 batería / 4 min)
-"""
-from simpleai import SearchProblem, astar_search
 
-INITIAL = 
+supongo un tablero de 10x10
+
+notas:
+    ver donde calculamos gasto de bateria
+    agregar el cambio de taladro - 59
+    agregar el cambio de taladro
+
+    Revisar --> Para armar una cápsula es necesario que el rover tenga 2 muestras cargadas, a menos que sea la última existente.
+"""
+# from simpleai import SearchProblem, astar_search
+# INITIAL = 
 class Rover():
     def __init__(self, bateria, zonas_sombra, muestras_igneas, muestras_sedimentarias, posicion_incial):
-        self.posicion_incial = posicion_incial
+        self.posicion = posicion_incial
         self.bateria = bateria
         self.zonas_sombra = zonas_sombra
-        self.muestras_igneas = muestras_igneas
+        self.muestras_igneas = muestras_igneas #[]
         self.muestras_sedimentarias = muestras_sedimentarias
         self.muestras = []
         self.taladro = None
 
     def actions(state):
         acciones_posibles = []
+
+        movimientos_simples = [(0,1), (0,-1), (1,0), (-1,0)]
+        movimientos_sprint = [(0,2), (0,-2), (2,0), (-2,0)]
+        posicion_actual = state.posicion
+        
         if state.bateria > 4:
-            acciones_posibles.append("sprintar")
-        if state.bateria > 3:
-            acciones_posibles.append("equipar_taladro")  
-        if state.bateria > 2 and len(state.muestras) < 2 and state.posicion in state.muestras_igneas and state.taladro == "igneo":
-            acciones_posibles.append("juntar_muestra_igneo")
-        if state.bateria > 2 and len(state.muestras) < 2 and state.posicion in state.muestras_sedimentarias and state.taladro == "sedimentario":
-            acciones_posibles.append("juntar_muestra_sedimentario")
+            for movimientos in movimientos_sprint:
+                posicion_a_validar = (posicion_actual[0] + movimientos[0], posicion_actual[1] + movimientos[1])
+                if  0 <= posicion_a_validar[0] <= 10 and 0 <= posicion_a_validar[1] <= 10:
+                    acciones_posibles.append(("sobremarcha", (posicion_a_validar[0], posicion_a_validar[1])))
+        # if state.bateria > 3:
+        #     acciones_posibles.append("junar")  
+        if state.bateria > 3 and len(state.muestras) < 2 and state.posicion in state.muestras_igneas and state.taladro == "igneo":
+            acciones_posibles.append("recolectar", "ignea")
+        if state.bateria > 3 and len(state.muestras) < 2 and state.posicion in state.muestras_sedimentarias and state.taladro == "sedimentario":
+            acciones_posibles.append("recolectar", "sedimentaria")
         if state.bateria > len(state.muestras) and len(state.muestras) > 0:
-            acciones_posibles.append("dejar_capsula")
+            acciones_posibles.append("entregar", None) # ver calculo de bateria y eso
+        #agregar el cambio de taladro
+        if state.bateria > 1:
+            for movimientos in movimientos_simples:
+                posicion_a_validar = (posicion_actual[0] + movimientos[0], posicion_actual[1] + movimientos[1])
+                if  0 <= posicion_a_validar[0] <= 10 and 0 <= posicion_a_validar[1] <= 10:
+                    acciones_posibles.append(("moverse", (posicion_a_validar[0], posicion_a_validar[1])))
         if state.bateria > 1:
             acciones_posibles.append("movimiento_normal")
         acciones_posibles.append("recargar_bateria")
         return acciones_posibles
     
     def cost(state1, action, state2):
-
+        # por accion ir sumando tiempo
         pass
     def heuristic(state):
-
+        
         pass
     def is_goal(state):
-
+        # si no hay mas muestras y no tengo muentras en la mochila
         pass
     def result(state, action):
+        #aca se sacaria bateria, las muestras del piso (la pos) y las muestras en la mochila
 
         pass
 
