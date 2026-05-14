@@ -73,7 +73,12 @@ class Rover():
     def cost(state1, action, state2):
         if action == "sobremarcha" or action == "moverse":
             return 1
-        if action == "recolectar" or action == "entregar":
+        if action == "entregar":
+            if len(state1.muestras) == 2:
+                return 2
+            else:
+                return 1
+        if action == "recolectar":
             return 2
         if action == "equipar":
             return 3
