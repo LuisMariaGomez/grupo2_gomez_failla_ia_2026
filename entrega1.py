@@ -48,57 +48,51 @@ class Rover():
         posicion_actual = state.posicion
         
         if state.bateria > 4:
-            for movimientos in movimientos_sprint:
-                posicion_a_validar = (posicion_actual[0] + movimientos[0], posicion_actual[1] + movimientos[1])
-                if  0 <= posicion_a_validar[0] <= 10 and 0 <= posicion_a_validar[1] <= 10:
-                    acciones_posibles.append(("sobremarcha", (posicion_a_validar[0], posicion_a_validar[1]))) 
-        if state.bateria > 3 and len(state.muestras) < 2 and state.posicion in state.muestras_igneas and state.taladro == "igneo":
-            acciones_posibles.append("recolectar", "ignea")
-        if state.bateria > 3 and len(state.muestras) < 2 and state.posicion in state.muestras_sedimentarias and state.taladro == "sedimentario":
-            acciones_posibles.append("recolectar", "sedimentaria")
-        if state.bateria > 3 and len(state.muestras) == 2 or len(state.muestras_igneas)+len(state.muestras_sedimentarias) < 2 :
-            acciones_posibles.append("entregar", None) # ver calculo de bateria y eso
-        if state.bateria > 1 and state.posicion in state.muestras_igneas and state.taladro != "igneo":
-            acciones_posibles.append("equipar", "termico")
-        if state.bateria > 1 and state.posicion in state.muestras_sedimentarias and state.taladro != "sedimentario":
-            acciones_posibles.append("equipar", "percusión")
+            for (x, y) in movimientos_sprint:
+                posicion_nueva = (posicion_actual[0] + x, posicion_actual[1] + y)
+                acciones_posibles.append(("sobremarcha", posicion_nueva))
+            # for movimientos in movimientos_sprint:
+            #     posicion_a_validar = (posicion_actual[0] + movimientos[0], posicion_actual[1] + movimientos[1])
+            #     if  0 <= posicion_a_validar[0] <= 10 and 0 <= posicion_a_validar[1] <= 10:
+            #         acciones_posibles.append(("sobremarcha", (posicion_a_validar[0], posicion_a_validar[1]))) 
+        if state.bateria > 3 and len(state.muestras) < 2 and state.posicion in state.muestras_igneas and state.taladro == "termico":
+            acciones_posibles.append(("recolectar", "ignea"))
+        if state.bateria > 3 and len(state.muestras) < 2 and state.posicion in state.muestras_sedimentarias and state.taladro == "percusion":
+            acciones_posibles.append(("recolectar", "sedimentaria"))
+        if state.bateria > 2 and len(state.muestras) == 2:
+                acciones_posibles.append(("depositar", None)) # ver calculo de bateria y eso
+        if state.bateria > 1 and len(state.muestras) == 1 and len(state.muestras_igneas) + len(state.muestras_sedimentarias) == 0:
+                acciones_posibles.append(("depositar", None)) # ver calculo de bateria y eso
+        if state.bateria > 1 and state.posicion in state.muestras_igneas and state.taladro != "termico":
+            acciones_posibles.append(("equipar", "termico"))
+        if state.bateria > 1 and state.posicion in state.muestras_sedimentarias and state.taladro != "percusion":
+            acciones_posibles.append(("equipar", "percusion"))
         if state.bateria > 1:
-            for movimientos in movimientos_simples:
-                posicion_a_validar = (posicion_actual[0] + movimientos[0], posicion_actual[1] + movimientos[1])
-                if  0 <= posicion_a_validar[0] <= 10 and 0 <= posicion_a_validar[1] <= 10:
-                    acciones_posibles.append(("moverse", (posicion_a_validar[0], posicion_a_validar[1])))
-        acciones_posibles.append("recargar_bateria")
+            for (x, y) in movimientos_simples:
+                posicion_nueva = (posicion_actual[0] + x, posicion_actual[1] + y)
+                acciones_posibles.append(("moverse", posicion_nueva))
+            # for movimientos in movimientos_simples:
+            #     posicion_a_validar = (posicion_actual[0] + movimientos[0], posicion_actual[1] + movimientos[1])
+            #     if  0 <= posicion_a_validar[0] <= 10 and 0 <= posicion_a_validar[1] <= 10:
+            #         acciones_posibles.append(("moverse", (posicion_a_validar[0], posicion_a_validar[1])))
+        if (state.posicion not in state.zonas_sombra):
+            acciones_posibles.append(("recargar", None))
         return acciones_posibles
     
     def cost(state1, action, state2):
-        if action == "sobremarcha" or action == "moverse":
+        if action[0] == "sobremarcha" or action[0] == "moverse":
             return 1
-        if action == "entregar":
+        if action[0] == "depositar":
             if len(state1.muestras) == 2:
                 return 2
             else:
                 return 1
-        if action == "recolectar":
+        if action[0] == "recolectar":
             return 2
-        if action == "equipar":
+        if action[0] == "equipar":
             return 3
-        if action == "recargar_bateria":
+        if action[0] == "recargar":
             return 4
-        # por accion ir sumando tiempo
-        # tiempo_minutos = 0
-        # if action == "sobremarcha":
-        #     tiempo_minutos += 1
-        # if action == "recolectar":
-        #     tiempo_minutos += 2
-        # if action == "entregar":
-        #     tiempo_minutos +=2
-        # if action == "equipar":
-        #     tiempo_minutos += 3
-        # if action == "moverse":
-        #     tiempo_minutos += 1
-        # if action == "recargar_bateria":
-        #     tiempo_minutos += 4
-        # return tiempo_minutos
     
     def heuristic(state):
         
@@ -108,34 +102,36 @@ class Rover():
         # si no hay mas muestras y no tengo muentras en la mochila
         if len(state.muestras_igneas) == 0 and len(state.muestras_sedimentarias) == 0 and len(state.muestras) == 0:
             return True
-        pass
-
+        return False
+    
     def result(state, action):
         #aca se sacaria bateria, las muestras del piso (la pos) y las muestras en la mochila
-        if action == "sobremarcha":
+        if action[0] == "sobremarcha":
             state.bateria -= 4
             state.posicion = action[1] #cambia la posicion a la que se mueve, la action seria ("sobremarcha", (x,y)), asi que agarro el (x,y)
-        if action == "recolectar":
+        if action[0] == "recolectar":
             state.bateria -= 3
             state.muestras.append(action[1]) # la action seria ("recolectar", "ignea") o ("recolectar", "sedimentaria"), asi que agarro el tipo de muestra
             if action[1] == "ignea":
                 state.muestras_igneas.remove(state.posicion) # saco la muestra del piso, la pos es la del rover
             else:
                 state.muestras_sedimentarias.remove(state.posicion) # saco la muestra del piso, la pos es la del rover
-        if action == "entregar":
+        if action[0] == "depositar":
             if len(state.muestras) == 2: # si tengo 2 muestras, gasto 2 bateria
                 state.bateria -= 2
             else:
                 state.bateria -= 1 # si tengo 1 muestra, gasto 1 bateria, si tengo 2 muestras gasto 2 bateria
             state.muestras = [] # dejo las muestras en la capsula, asi que se vacia la mochila
-        if action == "equipar":
+        if action[0] == "equipar":
             state.bateria -= 1
-            state.taladro = action[1] # la action seria ("equipar", "termico") o ("equipar", "percusión"), asi que agarro el tipo de taladro
-        if action == "moverse":
+            state.taladro = action[1] # la action seria ("equipar", "termico") o ("equipar", "percusion"), asi que agarro el tipo de taladro
+        if action[0] == "moverse":
             state.bateria -= 1
             state.posicion = action[1] #cambia la posicion a la que se mueve, la action seria ("moverse", (x,y)), asi que agarro el (x,y)                
-        if action == "recargar_bateria":
+        if action[0] == "recargar":
             state.bateria +=10 
+            if state.bateria > 20: # la bateria no puede superar el maximo de 20
+                state.bateria = 20
         return state.bateria, state.posicion, state.muestras, state.taladro, state.muestras_igneas, state.muestras_sedimentarias
     
 estado_incial = Rover(10, [(1,1), (2,2)], [(0,0), (3,3)], [(4,4), (5,5)], (0,0))
