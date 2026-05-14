@@ -13,7 +13,7 @@ restricciones:
 acciones: (de mayor a menor asi dependiendo de la bateria armamos la lista de acciones posibles)
     - Sprint (4 batería / 1 min) salta dos casillas en una direccion (revisar que no se salga del mapa)
     - Juntar muestra (3 batería / 2 min) listo
-        - Dejar cápsula (1 batería por muestra / 1 min c/u)
+    - Dejar cápsula (1 batería por muestra / 1 min c/u)
     - Equipar taladro (1 batería / 3 min)
     - Movimiento normal (1 batería / 1 min)
     - Recargar batería (+10 batería / 4 min)
@@ -67,49 +67,70 @@ class Rover():
                 posicion_a_validar = (posicion_actual[0] + movimientos[0], posicion_actual[1] + movimientos[1])
                 if  0 <= posicion_a_validar[0] <= 10 and 0 <= posicion_a_validar[1] <= 10:
                     acciones_posibles.append(("moverse", (posicion_a_validar[0], posicion_a_validar[1])))
-        if state.bateria > 1:
-            acciones_posibles.append("movimiento_normal")
         acciones_posibles.append("recargar_bateria")
         return acciones_posibles
     
     def cost(state1, action, state2):
-        # por accion ir sumando tiempo
-        tiempo_minutos = 0
-        if action == "sobremarcha":
-            tiempo_minutos += 1
-        if action == "recolectar":
-            tiempo_minutos += 2
-        if action == "entregar":
-            tiempo_minutos +=2
+        if action == "sobremarcha" or action == "moverse":
+            return 1
+        if action == "recolectar" or action == "entregar":
+            return 2
         if action == "equipar":
-            tiempo_minutos += 3
-        if action == "moverse":
-            tiempo_minutos += 1
+            return 3
         if action == "recargar_bateria":
-            tiempo_minutos += 4
-        return tiempo_minutos
+            return 4
+        # por accion ir sumando tiempo
+        # tiempo_minutos = 0
+        # if action == "sobremarcha":
+        #     tiempo_minutos += 1
+        # if action == "recolectar":
+        #     tiempo_minutos += 2
+        # if action == "entregar":
+        #     tiempo_minutos +=2
+        # if action == "equipar":
+        #     tiempo_minutos += 3
+        # if action == "moverse":
+        #     tiempo_minutos += 1
+        # if action == "recargar_bateria":
+        #     tiempo_minutos += 4
+        # return tiempo_minutos
     
     def heuristic(state):
         
         pass
+
     def is_goal(state):
         # si no hay mas muestras y no tengo muentras en la mochila
         if len(state.muestras_igneas) == 0 and len(state.muestras_sedimentarias) == 0 and len(state.muestras) == 0:
             return True
         pass
+
     def result(state, action):
         #aca se sacaria bateria, las muestras del piso (la pos) y las muestras en la mochila
         if action == "sobremarcha":
             state.bateria -= 4
+            state.posicion = action[1] #cambia la posicion a la que se mueve, la action seria ("sobremarcha", (x,y)), asi que agarro el (x,y)
         if action == "recolectar":
             state.bateria -= 3
+            state.muestras.append(action[1]) # la action seria ("recolectar", "ignea") o ("recolectar", "sedimentaria"), asi que agarro el tipo de muestra
+            if action[1] == "ignea":
+                state.muestras_igneas.remove(state.posicion) # saco la muestra del piso, la pos es la del rover
+            else:
+                state.muestras_sedimentarias.remove(state.posicion) # saco la muestra del piso, la pos es la del rover
         if action == "entregar":
-            state.bateria -=1
+            if len(state.muestras) == 2: # si tengo 2 muestras, gasto 2 bateria
+                state.bateria -= 2
+            else:
+                state.bateria -= 1 # si tengo 1 muestra, gasto 1 bateria, si tengo 2 muestras gasto 2 bateria
+            state.muestras = [] # dejo las muestras en la capsula, asi que se vacia la mochila
         if action == "equipar":
             state.bateria -= 1
+            state.taladro = action[1] # la action seria ("equipar", "termico") o ("equipar", "percusión"), asi que agarro el tipo de taladro
         if action == "moverse":
             state.bateria -= 1
+            state.posicion = action[1] #cambia la posicion a la que se mueve, la action seria ("moverse", (x,y)), asi que agarro el (x,y)                
         if action == "recargar_bateria":
             state.bateria +=10 
         return state.bateria, state.posicion, state.muestras, state.taladro, state.muestras_igneas, state.muestras_sedimentarias
+    
 estado_incial = Rover(10, [(1,1), (2,2)], [(0,0), (3,3)], [(4,4), (5,5)], (0,0))
