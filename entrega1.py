@@ -24,9 +24,10 @@ notas:
     ver donde calculamos gasto de bateria
     agregar el cambio de taladro - 59
     agregar el cambio de taladro
-
+    rover_inicio=(0, 0),
+    bateria_inicial=20,
     Revisar --> Para armar una cápsula es necesario que el rover tenga 2 muestras cargadas, a menos que sea la última existente.
-"""
+""" 
 # from simpleai import SearchProblem, astar_search
 # INITIAL = 
 class Rover():
