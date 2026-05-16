@@ -34,9 +34,9 @@ class Rover():
     def __init__(self, bateria, zonas_sombra, muestras_igneas, muestras_sedimentarias, posicion_incial):
         self.posicion = posicion_incial
         self.bateria = bateria
-        self.zonas_sombra = zonas_sombra
-        self.muestras_igneas = muestras_igneas #[]
-        self.muestras_sedimentarias = muestras_sedimentarias
+        self.zonas_sombra = tuple(zonas_sombra)
+        self.muestras_igneas = tuple(muestras_igneas)
+        self.muestras_sedimentarias = tuple(muestras_sedimentarias)
         self.muestras = []
         self.taladro = None
 
@@ -71,11 +71,7 @@ class Rover():
             for (x, y) in movimientos_simples:
                 posicion_nueva = (posicion_actual[0] + x, posicion_actual[1] + y)
                 acciones_posibles.append(("moverse", posicion_nueva))
-            # for movimientos in movimientos_simples:
-            #     posicion_a_validar = (posicion_actual[0] + movimientos[0], posicion_actual[1] + movimientos[1])
-            #     if  0 <= posicion_a_validar[0] <= 10 and 0 <= posicion_a_validar[1] <= 10:
-            #         acciones_posibles.append(("moverse", (posicion_a_validar[0], posicion_a_validar[1])))
-        if (state.posicion not in state.zonas_sombra):
+        if (state.posicion not in state.zonas_sombra and state.bateria < 20):
             acciones_posibles.append(("recargar", None))
         return acciones_posibles
     
@@ -93,6 +89,8 @@ class Rover():
             return 3
         if action[0] == "recargar":
             return 4
+        else:
+            raise ValueError(f"Accion desconocida: {action}")
     
     def heuristic(state):
         
@@ -105,33 +103,45 @@ class Rover():
         return False
     
     def result(state, action):
-        #aca se sacaria bateria, las muestras del piso (la pos) y las muestras en la mochila
+        nuevo_estado = Rover(
+            state.bateria,
+            state.zonas_sombra,
+            tuple(state.muestras_igneas),
+            tuple(state.muestras_sedimentarias),
+            state.posicion,
+        )
+        nuevo_estado.muestras = list(state.muestras)
+        nuevo_estado.taladro = state.taladro
+
         if action[0] == "sobremarcha":
-            state.bateria -= 4
-            state.posicion = action[1] #cambia la posicion a la que se mueve, la action seria ("sobremarcha", (x,y)), asi que agarro el (x,y)
+            nuevo_estado.bateria -= 4
+            nuevo_estado.posicion = action[1]
+
         if action[0] == "recolectar":
-            state.bateria -= 3
-            state.muestras.append(action[1]) # la action seria ("recolectar", "ignea") o ("recolectar", "sedimentaria"), asi que agarro el tipo de muestra
+            nuevo_estado.bateria -= 3
+            nuevo_estado.muestras.append(action[1])
             if action[1] == "ignea":
-                state.muestras_igneas.remove(state.posicion) # saco la muestra del piso, la pos es la del rover
+                lista_temporal = list(nuevo_estado.muestras_igneas)
+                lista_temporal.remove(nuevo_estado.posicion)
+                nuevo_estado.muestras_igneas = tuple(lista_temporal)
             else:
-                state.muestras_sedimentarias.remove(state.posicion) # saco la muestra del piso, la pos es la del rover
+                lista_temporal = list(nuevo_estado.muestras_sedimentarias)
+                lista_temporal.remove(nuevo_estado.posicion)
+                nuevo_estado.muestras_sedimentarias = tuple(lista_temporal)
+
         if action[0] == "depositar":
-            if len(state.muestras) == 2: # si tengo 2 muestras, gasto 2 bateria
-                state.bateria -= 2
-            else:
-                state.bateria -= 1 # si tengo 1 muestra, gasto 1 bateria, si tengo 2 muestras gasto 2 bateria
-            state.muestras = [] # dejo las muestras en la capsula, asi que se vacia la mochila
+            nuevo_estado.bateria -= len(nuevo_estado.muestras)
+            nuevo_estado.muestras = []
+
         if action[0] == "equipar":
-            state.bateria -= 1
-            state.taladro = action[1] # la action seria ("equipar", "termico") o ("equipar", "percusion"), asi que agarro el tipo de taladro
+            nuevo_estado.bateria -= 1
+            nuevo_estado.taladro = action[1]
+
         if action[0] == "moverse":
-            state.bateria -= 1
-            state.posicion = action[1] #cambia la posicion a la que se mueve, la action seria ("moverse", (x,y)), asi que agarro el (x,y)                
+            nuevo_estado.bateria -= 1
+            nuevo_estado.posicion = action[1]
+
         if action[0] == "recargar":
-            state.bateria +=10 
-            if state.bateria > 20: # la bateria no puede superar el maximo de 20
-                state.bateria = 20
-        return state.bateria, state.posicion, state.muestras, state.taladro, state.muestras_igneas, state.muestras_sedimentarias
-    
-estado_incial = Rover(10, [(1,1), (2,2)], [(0,0), (3,3)], [(4,4), (5,5)], (0,0))
+            nuevo_estado.bateria = min(20, nuevo_estado.bateria + 10)
+
+        return nuevo_estado
