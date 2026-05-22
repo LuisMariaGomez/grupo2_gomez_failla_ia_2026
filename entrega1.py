@@ -37,11 +37,8 @@ class Rover(SearchProblem):
         if bateria > 3 and len(muestras_almacenadas) < 2 and posicion_rover in muestras_sedimentarias and taladro_equipado == "percusion":
             acciones_posibles.append(("recolectar", "sedimentaria"))
 
-        if bateria > 2 and len(muestras_almacenadas) == 2:
-            acciones_posibles.append(("depositar", None)) # ver calculo de bateria y eso
-
-        if bateria > 1 and len(muestras_almacenadas) == 1 and cantidad_muestras == 0:
-            acciones_posibles.append(("depositar", None)) # ver calculo de bateria y eso
+        if (bateria > 1 and len(muestras_almacenadas) > 0) and (len(muestras_almacenadas) == 2 or cantidad_muestras == 0):
+            acciones_posibles.append(("depositar", None))
 
         if bateria > 1 and posicion_rover in muestras_igneas and taladro_equipado != "termico":
             acciones_posibles.append(("equipar", "termico"))
@@ -62,8 +59,10 @@ class Rover(SearchProblem):
     def cost(self, state1, action, state2):
         muestras_almacenadas = state1[6]
         valor_accion = 0
-        if action[0] == "sobremarcha" or action[0] == "moverse":
-            valor_accion = 1
+        if action[0] == "sobremarcha":
+            return 1 
+        if action[0] == "moverse":
+            return 1 
         if action[0] == "depositar":
             valor_accion = len(muestras_almacenadas)
         if action[0] == "recolectar":
@@ -77,8 +76,8 @@ class Rover(SearchProblem):
     def heuristic(self, state):
         (
             posicion_rover,
-            bateria,    # no se usa
-            zonas_sombra,# no se usa
+            bateria,
+            zonas_sombra,
             muestras_igneas,
             muestras_sedimentarias,
             taladro_equipado,
@@ -89,26 +88,32 @@ class Rover(SearchProblem):
         if not muestras_restantes:
             return len(muestras_almacenadas)
 
-        # Estimar tiempo de equipajes necesarios
-        tiene_igneas = len(muestras_igneas) > 0
-        tiene_sedimentarias = len(muestras_sedimentarias) > 0
-        
-        tiempo_equipaje = 0
-        if tiene_igneas and tiene_sedimentarias:
-            # Necesita cambiar entre dos tipos: mínimo 6 minutos (2 equipajes)
-            tiempo_equipaje = 6
-        elif taladro_equipado == "ninguno":
-            # Necesita equipar al menos una vez
-            tiempo_equipaje = 3
-
         distancia_minima = min(
             abs(posicion_rover[0] - muestra[0]) + abs(posicion_rover[1] - muestra[1])
             for muestra in muestras_restantes
         )
-        movimientos_minimos = (distancia_minima + 1) // 2 # el +1 es para redondear hacia arriba
-        tiempo_minimo_por_muestra = 2 * len(muestras_restantes)
+        
+        # --- NUEVA FÓRMULA DE MOVIMIENTO OPTIMIZADA ---
+        # T >= max(dist/2, 1.3 * dist - 0.4 * bateria)
+        estimacion_tiempo_viaje = max(
+            distancia_minima / 2.0,
+            1.3 * distancia_minima - 0.4 * bateria
+        )
+        # Truncamos (int) para redondear hacia abajo y garantizar que siga siendo Admisible
+        movimientos_minimos = int(estimacion_tiempo_viaje)
 
-        return movimientos_minimos + tiempo_equipaje + tiempo_minimo_por_muestra + len(muestras_almacenadas)
+        tiempo_base_muestras = 3 * len(muestras_restantes)
+        tiempo_deposito_actuales = len(muestras_almacenadas)
+
+        costo_taladro = 0
+        if taladro_equipado is None: 
+            costo_taladro = 3
+        elif taladro_equipado == "termico" and muestras_sedimentarias:
+            costo_taladro = 3
+        elif taladro_equipado == "percusion" and muestras_igneas:
+            costo_taladro = 3
+
+        return movimientos_minimos + tiempo_base_muestras + tiempo_deposito_actuales + costo_taladro
 
     def is_goal(self, state):
         (
@@ -155,7 +160,7 @@ class Rover(SearchProblem):
                 muestras_sedimentarias.remove(posicion_rover)
 
         if tipo_accion == "depositar":
-            bateria -= len(muestras_almacenadas)
+            bateria -= 1
             muestras_almacenadas = []
 
         if tipo_accion == "equipar":
