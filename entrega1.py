@@ -81,13 +81,25 @@ class Rover(SearchProblem):
             zonas_sombra,# no se usa
             muestras_igneas,
             muestras_sedimentarias,
-            taladro_equipado, # no se usa
+            taladro_equipado,
             muestras_almacenadas,
         ) = state
 
         muestras_restantes = muestras_igneas + muestras_sedimentarias
         if not muestras_restantes:
             return len(muestras_almacenadas)
+
+        # Estimar tiempo de equipajes necesarios
+        tiene_igneas = len(muestras_igneas) > 0
+        tiene_sedimentarias = len(muestras_sedimentarias) > 0
+        
+        tiempo_equipaje = 0
+        if tiene_igneas and tiene_sedimentarias:
+            # Necesita cambiar entre dos tipos: mínimo 6 minutos (2 equipajes)
+            tiempo_equipaje = 6
+        elif taladro_equipado == "ninguno":
+            # Necesita equipar al menos una vez
+            tiempo_equipaje = 3
 
         distancia_minima = min(
             abs(posicion_rover[0] - muestra[0]) + abs(posicion_rover[1] - muestra[1])
@@ -96,7 +108,7 @@ class Rover(SearchProblem):
         movimientos_minimos = (distancia_minima + 1) // 2 # el +1 es para redondear hacia arriba
         tiempo_minimo_por_muestra = 2 * len(muestras_restantes)
 
-        return movimientos_minimos + tiempo_minimo_por_muestra + len(muestras_almacenadas)
+        return movimientos_minimos + tiempo_equipaje + tiempo_minimo_por_muestra + len(muestras_almacenadas)
 
     def is_goal(self, state):
         (
