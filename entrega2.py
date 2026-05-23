@@ -41,7 +41,7 @@ def build_camp(camp_size, habs, generators, labs, deposits, airlocks, craters):
     # r3: Esclusas en el borde
 
     def esclusas_borde(variables, values):
-        # 'variables' va a traer solo las esclusas (ej: ['airlock_0', 'airlock_1'])
+        #  para 'variables' ver de traer solo las esclusas (ej: ['airlock_0', 'airlock_1'])
         # 'values' trae las coordenadas que SimpleAI quiere probar para esas esclusas
         for fila, columna in values:
             if((fila != 0 or fila != filas-1 or columna != 0 or columna != columnas-1)):  # si encuentra una que no este en el borde chau
@@ -50,6 +50,63 @@ def build_camp(camp_size, habs, generators, labs, deposits, airlocks, craters):
 
     constraints.append((var_airlocks, esclusas_borde))
 
+    # r4: habitaciones en el interior
+
+    def hab_interiores(variables, values):
+        #  para 'variables' ver de traer solo las hab
+        # 'values' trae las coordenadas que SimpleAI quiere probar para esas habs
+        for fila, columna in values:
+            if((fila == 0 or fila == filas-1 or columna == 0 or columna == columnas-1)):  # lo mismo que antes pero al verez
+                return False
+        return True
+
+    constraints.append((var_habs, hab_interiores))
+    
+    # los que siguen piden ver si son vecinos asi que hago una sola logica para ver si las cosas que pasan lo son
+    def son_vecinos(coordenada1, coordenada2):
+        fil_1, col_1 = coordenada1
+        fil_2, col_2 = coordenada2
+        vecinos_ortogonales = [(0,1), (0,-1),(1,0),(-1,0)]
+        # vecinos_diagonales = [(1,1),(-1,-1),(1,-1),(-1,1)] # al final no
+
+        for coordenada_ortogonal in vecinos_ortogonales:    #aca la onda es ver si son vecinos ortogonales
+                    fil_co, col_co = coordenada_ortogonal
+                    if (fil_1 + fil_co == fil_2) and (col_1 + col_co == col_2):
+                        return True
+        # for coordenada_diagonal in vecinos_diagonales:    #aca la onda es ver si son vecinos diagonales
+                #     col_diag , fil_diag = coordenada_diagonal
+                #     if (col_g + col_diag == col_h) and (fil_g + fil_diag == fil_h):
+                #         return True
+        return False
+
+
+    # r5: seguridad energetica
+
+    def seg_ener(variables, values):
+        lista_gen = values[:len(var_generators)]
+        lista_hab = values[len(var_generators):]
+        for coordenada_gen in lista_gen:
+            for coordenada_hab in lista_hab:
+                if son_vecinos(coordenada_gen, coordenada_hab):
+                    return False
+        return True
+    
+    if var_generators and var_habs:
+        constraints.append((var_generators + var_habs, seg_ener))
+
+    # r6: aislamiento entre generadores
+
+    def generadores_vecinos(variables, values):
+        n = len(values)
+        for i in range(n):
+            for j in range(i+1,n):
+                if (son_vecinos(values[i], values[j])):
+                    return False
+        return True
+
+    constraints.append((var_generators, generadores_vecinos))
+
+    # r7: cadena suministro cientifico
     
 
 # problem = CspProblem(variables, domains, constraints)
