@@ -1,8 +1,6 @@
 from itertools import combinations
-from simpleai.search import(
-    CspProblem,
-    backtrack,
-)
+from simpleai.search import CspProblem, backtrack
+
 
 def build_camp(camp_size, habs, generators, labs, deposits, airlocks, craters):
     filas, columnas = camp_size
@@ -107,8 +105,65 @@ def build_camp(camp_size, habs, generators, labs, deposits, airlocks, craters):
     constraints.append((var_generators, generadores_vecinos))
 
     # r7: cadena suministro cientifico
-    
+   
+    def lab_junto_dep(variables, values):
+        lista_labs = values[:len(var_labs)]
+        lista_dep = values[len(var_labs):]
 
-# problem = CspProblem(variables, domains, constraints)
-# solution = backtrack(problem)
-# return solution
+        for coord_lab in lista_labs:
+            tiene_vecino_dep = False # ponemos que no tiene dep vecinos
+            for coord_dep in lista_dep: #agarramos una coord de dep
+                if(son_vecinos(coord_lab,coord_dep)): #vemos si son vecinos
+                    tiene_vecino_dep = True #si lo son
+                    break # termina con el 2do for y pasa al siguiente coor_lab en el 1er for y se resetea la variable tiene_vecino_dep eb false
+            if (not tiene_vecino_dep): # cuando un lab no tenga vecinos se va a llegar aca con false, se entra y cerramos
+                return False
+        return True # si nunca llego a lo anterior con una lab "ailsado" de dep, todo okay
+
+    constraints.append((var_labs + var_deposits, lab_junto_dep))
+
+    # r8: ruta de evacuacion
+    #  or (i!=j and values[j] in craters)
+
+    def ruta_evacuacion(variables, values):
+
+        for i in range(len(var_habs)):
+            cantidad_vecinos = 0
+            for crater in craters:          # revisamos si algun crater es vecino
+                if (son_vecinos(crater, values[i])):
+                    cantidad_vecinos += 1
+
+            for j in range(len(values)):
+                if (i!=j and son_vecinos(values[i], values[j])):
+                    cantidad_vecinos += 1
+            if (cantidad_vecinos == 4):     #Si tiene 4 vecinos significa que tiene uno en cada posicion ortogonal
+                return False
+        return True
+    
+    constraints.append((variables, ruta_evacuacion))
+
+    problem = CspProblem(variables, domains, constraints)
+    solution = backtrack(problem)
+
+    if solution is None:
+        return None
+    
+    solucion_final = []
+
+    for nombre_variable, coordenada in solution.items():
+        fila, columna = coordenada
+        
+        if nombre_variable.startswith('hab'):
+            tipo = 'hab'
+        elif nombre_variable.startswith('gen'):
+            tipo = 'gen'
+        elif nombre_variable.startswith('lab'):
+            tipo = 'lab'
+        elif nombre_variable.startswith('dep'):
+            tipo = 'dep'
+        elif nombre_variable.startswith('air'):
+            tipo = 'air'
+            
+        solucion_final.append((tipo, fila, columna))
+        
+    return solucion_final
