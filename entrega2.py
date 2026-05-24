@@ -12,7 +12,7 @@ def build_camp(camp_size, habs, generators, labs, deposits, airlocks, craters):
     var_deposits = [f'deposit_{i}' for i in range(deposits)]
     var_airlocks = [f'airlock_{i}' for i in range(airlocks)]
         
-    if (len(deposits) == 0 and len(var_labs > 0)): # hay una reestriccion que pide que todo lab tiene que tener un dep al lado, si no hay dep pero si labs, seria al cuete ver todo
+    if (deposits == 0 and labs > 0): # hay una reestriccion que pide que todo lab tiene que tener un dep al lado, si no hay dep pero si labs, seria al cuete ver todo
         return None
     
     variables = var_habs + var_generators + var_labs + var_deposits + var_airlocks
@@ -34,7 +34,8 @@ def build_camp(camp_size, habs, generators, labs, deposits, airlocks, craters):
     def sin_superposicion(variables, values):   # values es una tupla que sAI esta probando --> ((0,0), (0,1), (0,0)), una forma de eliiminar dupliicados es con set()
         return len(values) == len(set(values))  # si el largo original es igual al del set, entonces no habia repetidos
     
-    constraints.append((variables, sin_superposicion))
+    if variables:
+        constraints.append((variables, sin_superposicion))
 
     # r3: Esclusas en el borde
 
@@ -42,11 +43,12 @@ def build_camp(camp_size, habs, generators, labs, deposits, airlocks, craters):
         #  para 'variables' ver de traer solo las esclusas (ej: ['airlock_0', 'airlock_1'])
         # 'values' trae las coordenadas que SimpleAI quiere probar para esas esclusas
         for fila, columna in values:
-            if((fila != 0 or fila != filas-1 or columna != 0 or columna != columnas-1)):  # si encuentra una que no este en el borde chau
+            if not (fila == 0 or fila == filas-1 or columna == 0 or columna == columnas-1):  # si encuentra una que no este en el borde chau
                 return False
         return True
 
-    constraints.append((var_airlocks, esclusas_borde))
+    if var_airlocks:
+        constraints.append((var_airlocks, esclusas_borde))
 
     # r4: habitaciones en el interior
 
@@ -58,7 +60,8 @@ def build_camp(camp_size, habs, generators, labs, deposits, airlocks, craters):
                 return False
         return True
 
-    constraints.append((var_habs, hab_interiores))
+    if var_habs:
+        constraints.append((var_habs, hab_interiores))
     
     # los que siguen piden ver si son vecinos asi que hago una sola logica para ver si las cosas que pasan lo son
     def son_vecinos(coordenada1, coordenada2):
@@ -102,7 +105,8 @@ def build_camp(camp_size, habs, generators, labs, deposits, airlocks, craters):
                     return False
         return True
 
-    constraints.append((var_generators, generadores_vecinos))
+    if len(var_generators) > 1:
+        constraints.append((var_generators, generadores_vecinos))
 
     # r7: cadena suministro cientifico
    
@@ -120,10 +124,10 @@ def build_camp(camp_size, habs, generators, labs, deposits, airlocks, craters):
                 return False
         return True # si nunca llego a lo anterior con una lab "ailsado" de dep, todo okay
 
-    constraints.append((var_labs + var_deposits, lab_junto_dep))
+    if var_labs and var_deposits:
+        constraints.append((var_labs + var_deposits, lab_junto_dep))
 
     # r8: ruta de evacuacion
-    #  or (i!=j and values[j] in craters)
 
     def ruta_evacuacion(variables, values):
 
@@ -140,7 +144,8 @@ def build_camp(camp_size, habs, generators, labs, deposits, airlocks, craters):
                 return False
         return True
     
-    constraints.append((variables, ruta_evacuacion))
+    if var_habs:
+        constraints.append((variables, ruta_evacuacion))
 
     problem = CspProblem(variables, domains, constraints)
     solution = backtrack(problem)
