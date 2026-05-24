@@ -11,141 +11,129 @@ def build_camp(camp_size, habs, generators, labs, deposits, airlocks, craters):
     var_labs = [f'lab_{i}' for i in range(labs)]
     var_deposits = [f'deposit_{i}' for i in range(deposits)]
     var_airlocks = [f'airlock_{i}' for i in range(airlocks)]
+
+    # para las comparaciones de vecinos
+    vecinos_ortogonales = [(0,1), (0,-1),(1,0),(-1,0)]
         
     if (deposits == 0 and labs > 0): # hay una reestriccion que pide que todo lab tiene que tener un dep al lado, si no hay dep pero si labs, seria al cuete ver todo
         return None
     
     variables = var_habs + var_generators + var_labs + var_deposits + var_airlocks
 
-    # dominio, todas las coor menos las que haya un crater asi ya sacamos r2 con eset planteo
-    dominio = []
-    for fila in range(filas):
-        for columna in range(columnas):
-            coordenada_a_verificar = (fila, columna)
-            if(coordenada_a_verificar not in craters):
-                dominio.append(coordenada_a_verificar)
+    # dominio sacando los crateres y evitando que haga hab en el borde
 
-    domains = {var: dominio for var in variables}   # Le estamos diciendo: "creá una clave que sea el nombre de la variable (var), y asignale como valor toda la lista de coordenadas que calculamos antes (dominio)".
-    
+    domains = {}
+    for var in variables:
+        dominio_var = []
+        for f in range(filas):
+            for c in range(columnas):
+                coor = (f, c)
+                
+                #  r2: no pisar cráteres
+                if coor in craters:
+                    continue
+                
+                es_borde = (f == 0 or f == filas - 1 or c == 0 or c == columnas - 1) # la coor esta en el borte
+                
+                #  r4: habs no pueden ir en el borde
+                if var.startswith('hab') and es_borde:
+                    continue
+                    
+                # r3: Esclusas no pueden ir en el interior
+                if var.startswith('air') and not es_borde:
+                    continue
+                    
+                dominio_var.append(coor)
+                
+        # si a alguna variable no le quedó ningún lugar válido, es imposible armar el campamento
+        if not dominio_var:
+            return None
+            
+        domains[var] = dominio_var
+
     constraints = []
 
+    # funcion de vecinos ya que se cansa de pedirlo
+
+    def son_vecinos(c1, c2):
+        f1, col1 = c1
+        f2, col2 = c2
+        return abs(f1 - f2) + abs(col1 - col2) == 1
+    
+    def no_vecinos(variables, values):
+        return not son_vecinos(values[0], values[1])
+    
     # r1: sin superposicion
 
-    def sin_superposicion(variables, values):   # values es una tupla que sAI esta probando --> ((0,0), (0,1), (0,0)), una forma de eliiminar dupliicados es con set()
-        return len(values) == len(set(values))  # si el largo original es igual al del set, entonces no habia repetidos
-    
-    if variables:
-        constraints.append((variables, sin_superposicion))
+    def diferentes(variables, values):
+        return values[0] != values[1]
+        
+    for v1, v2 in combinations(variables, 2):   #todas las combinaciones de 2 que puede haber en lo que quedo de dominio
+        constraints.append(((v1, v2), diferentes))
 
-    # r3: Esclusas en el borde
+    # r5: ningun generador al lado de hab
+        
+    for g in var_generators:
+        for h in var_habs:
+            constraints.append(((g, h), no_vecinos))
 
-    def esclusas_borde(variables, values):
-        #  para 'variables' ver de traer solo las esclusas (ej: ['airlock_0', 'airlock_1'])
-        # 'values' trae las coordenadas que SimpleAI quiere probar para esas esclusas
-        for fila, columna in values:
-            if not (fila == 0 or fila == filas-1 or columna == 0 or columna == columnas-1):  # si encuentra una que no este en el borde chau
-                return False
-        return True
+    # r6: ningun generador al lado de otro
 
-    if var_airlocks:
-        constraints.append((var_airlocks, esclusas_borde))
-
-    # r4: habitaciones en el interior
-
-    def hab_interiores(variables, values):
-        #  para 'variables' ver de traer solo las hab
-        # 'values' trae las coordenadas que SimpleAI quiere probar para esas habs
-        for fila, columna in values:
-            if((fila == 0 or fila == filas-1 or columna == 0 or columna == columnas-1)):  # lo mismo que antes pero al verez
-                return False
-        return True
-
-    if var_habs:
-        constraints.append((var_habs, hab_interiores))
-    
-    # los que siguen piden ver si son vecinos asi que hago una sola logica para ver si las cosas que pasan lo son
-    def son_vecinos(coordenada1, coordenada2):
-        fil_1, col_1 = coordenada1
-        fil_2, col_2 = coordenada2
-        vecinos_ortogonales = [(0,1), (0,-1),(1,0),(-1,0)]
-        # vecinos_diagonales = [(1,1),(-1,-1),(1,-1),(-1,1)] # al final no
-
-        for coordenada_ortogonal in vecinos_ortogonales:    #aca la onda es ver si son vecinos ortogonales
-                    fil_co, col_co = coordenada_ortogonal
-                    if (fil_1 + fil_co == fil_2) and (col_1 + col_co == col_2):
-                        return True
-        # for coordenada_diagonal in vecinos_diagonales:    #aca la onda es ver si son vecinos diagonales
-                #     col_diag , fil_diag = coordenada_diagonal
-                #     if (col_g + col_diag == col_h) and (fil_g + fil_diag == fil_h):
-                #         return True
-        return False
-
-
-    # r5: seguridad energetica
-
-    def seg_ener(variables, values):
-        lista_gen = values[:len(var_generators)]
-        lista_hab = values[len(var_generators):]
-        for coordenada_gen in lista_gen:
-            for coordenada_hab in lista_hab:
-                if son_vecinos(coordenada_gen, coordenada_hab):
-                    return False
-        return True
-    
-    if var_generators and var_habs:
-        constraints.append((var_generators + var_habs, seg_ener))
-
-    # r6: aislamiento entre generadores
-
-    def generadores_vecinos(variables, values):
-        n = len(values)
-        for i in range(n):
-            for j in range(i+1,n):
-                if (son_vecinos(values[i], values[j])):
-                    return False
-        return True
-
-    if len(var_generators) > 1:
-        constraints.append((var_generators, generadores_vecinos))
+    for g1, g2 in combinations(var_generators, 2):
+        constraints.append(((g1, g2), no_vecinos))
 
     # r7: cadena suministro cientifico
    
     def lab_junto_dep(variables, values):
-        lista_labs = values[:len(var_labs)]
-        lista_dep = values[len(var_labs):]
-
-        for coord_lab in lista_labs:
-            tiene_vecino_dep = False # ponemos que no tiene dep vecinos
-            for coord_dep in lista_dep: #agarramos una coord de dep
-                if(son_vecinos(coord_lab,coord_dep)): #vemos si son vecinos
-                    tiene_vecino_dep = True #si lo son
-                    break # termina con el 2do for y pasa al siguiente coor_lab en el 1er for y se resetea la variable tiene_vecino_dep eb false
-            if (not tiene_vecino_dep): # cuando un lab no tenga vecinos se va a llegar aca con false, se entra y cerramos
-                return False
-        return True # si nunca llego a lo anterior con una lab "ailsado" de dep, todo okay
-
-    if var_labs and var_deposits:
-        constraints.append((var_labs + var_deposits, lab_junto_dep))
+        coord_lab = values[0]
+        lista_deps = values[1:]
+        for dep in lista_deps:
+            if son_vecinos(coord_lab, dep):
+                return True # hay un depósito vecino, zafa
+        return False
+        
+    if var_deposits:
+        for lab in var_labs:
+            #  un laboratorio por vez contra todos los depósitos
+            constraints.append(([lab] + var_deposits, lab_junto_dep))
 
     # r8: ruta de evacuacion
 
+    # def ruta_evacuacion(variables, values):       LA HABIA PENSADO ASI PERO ERA PESADA
+
+    #     for i in range(len(var_habs)):
+    #         cantidad_vecinos = 0
+    #         for crater in craters:          # revisamos si algun crater es vecino
+    #             if (son_vecinos(crater, values[i])):
+    #                 cantidad_vecinos += 1
+
+    #         for j in range(len(values)):
+    #             if (i!=j and son_vecinos(values[i], values[j])):
+    #                 cantidad_vecinos += 1
+    #         if (cantidad_vecinos == 4):     #Si tiene 4 vecinos significa que tiene uno en cada posicion ortogonal
+    #             return False
+    #     return True
+
     def ruta_evacuacion(variables, values):
+        hab_coord = values[0]
+        otros_modulos = values[1:]
+        
+        # ver los 4 costados
+        for f_v, c_v in [(0,1), (0,-1), (1,0), (-1,0)]:
+            vecino = (hab_coord[0] + f_v, hab_coord[1] + c_v)
+            
+            #  ver que el vecino no se caiga del mapa
+            if 0 <= vecino[0] < filas and 0 <= vecino[1] < columnas:
+                #  no sea un cráter ni esté ocupado por otro módulo
+                if vecino not in craters and vecino not in otros_modulos:
+                    return True # hay una salida
+        return False # atrapadoooo
 
-        for i in range(len(var_habs)):
-            cantidad_vecinos = 0
-            for crater in craters:          # revisamos si algun crater es vecino
-                if (son_vecinos(crater, values[i])):
-                    cantidad_vecinos += 1
+    for hab in var_habs: # cada habitacio contra todos los demás mpdulos
+        otras_variables = [v for v in variables if v != hab] # todas las cosas menos la hab que agarramos
+        constraints.append(([hab] + otras_variables, ruta_evacuacion))
 
-            for j in range(len(values)):
-                if (i!=j and son_vecinos(values[i], values[j])):
-                    cantidad_vecinos += 1
-            if (cantidad_vecinos == 4):     #Si tiene 4 vecinos significa que tiene uno en cada posicion ortogonal
-                return False
-        return True
-    
-    if var_habs:
-        constraints.append((variables, ruta_evacuacion))
+    # final/formato
 
     problem = CspProblem(variables, domains, constraints)
     solution = backtrack(problem)
@@ -154,21 +142,13 @@ def build_camp(camp_size, habs, generators, labs, deposits, airlocks, craters):
         return None
     
     solucion_final = []
-
     for nombre_variable, coordenada in solution.items():
-        fila, columna = coordenada
+        if nombre_variable.startswith('hab'): tipo = 'hab'
+        elif nombre_variable.startswith('gen'): tipo = 'gen'
+        elif nombre_variable.startswith('lab'): tipo = 'lab'
+        elif nombre_variable.startswith('dep'): tipo = 'dep'
+        elif nombre_variable.startswith('air'): tipo = 'air'
         
-        if nombre_variable.startswith('hab'):
-            tipo = 'hab'
-        elif nombre_variable.startswith('gen'):
-            tipo = 'gen'
-        elif nombre_variable.startswith('lab'):
-            tipo = 'lab'
-        elif nombre_variable.startswith('dep'):
-            tipo = 'dep'
-        elif nombre_variable.startswith('air'):
-            tipo = 'air'
-            
-        solucion_final.append((tipo, fila, columna))
+        solucion_final.append((tipo, coordenada[0], coordenada[1]))
         
     return solucion_final
