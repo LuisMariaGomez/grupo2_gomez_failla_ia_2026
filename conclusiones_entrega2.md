@@ -1,0 +1,9 @@
+# Conclusiones
+
+Al comparar nuestra solución con la implementación propuesta inicialmente, observamos diferencias importantes en el rendimiento y en la forma de modelar las restricciones del CSP. Aunque ambas versiones cumplían  con las condiciones del problema, nuestra implementación logró resolver todos los casos de prueba dentro de los límites de tiempo establecidos, mientras que la otra solución comenzaba a trabarse en los escenarios más complejos.
+
+La principal diferencia estuvo en el manejo de las restricciones. En nuestra solución, la mayoría de las restricciones se implementaron de forma binaria y localizada, evitando chequeos globales innecesarios. En cambio, la otra implementación utilizaba restricciones más pesadas, especialmente en la validación de rutas de evacuación, donde cada módulo habitacional se comparaba contra prácticamente todas las demás variables del problema. Esto aumentaba enormemente el espacio de búsqueda y hacía mucho más lento el backtracking.
+
+También resultó importante la optimización previa del dominio y las verificaciones rápidas de imposibilidad. Nuestra implementación descartaba desde el inicio configuraciones inválidas, como laboratorios sin depósitos o módulos sin posiciones posibles, reduciendo considerablemente la cantidad de estados que el algoritmo debía explorar. Además, la construcción de dominios ya incorporaba varias restricciones, evitando trabajo extra durante la búsqueda.
+
+Ambas soluciones modelaban correctamente el campamento marciano como un CSP, pero nuestra implementación obtuvo un desempeño significativamente mejor gracias a un diseño más eficiente de restricciones y dominios. Esto permitió reducir el costo computacional del backtracking y lograr una resolución mucho más rápida y escalable frente a los tests más exigentes.
