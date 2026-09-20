@@ -19,3 +19,5 @@ solicitudes_test.csv: Las solicitudes nuevas de este mes. Contiene la misma info
 Nota: un cliente tiene una sola fila en solicitudes, pero puede tener hasta 24 filas en el comportamiento bancario. Deberán tomar decisiones sobre cómo agregar y cruzar esta información para alimentar a su modelo.
 
 (Consejo: No basta con usar el método .predict() de su modelo. Tendrán que obtener las probabilidades, calcular la esperanza matemática de cada préstamo y ordenar los más rentables hasta agotar el presupuesto. La ganancia monetaria importa más que la performance del modelo)
+
+https://www.probabilidadyestadistica.net/esperanza-matematica-o-valor-esperado/
